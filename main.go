@@ -11,14 +11,7 @@ import (
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Please enter the url you would like to download from then hit enter: \n")
-
-	delimiter := '\n'
-	url, err := reader.ReadString(byte(delimiter))
-	url = strings.TrimSuffix(url, string(delimiter))
-	if err != nil {
-		panic(fmt.Errorf("the string that was entered is invalid"))
-	}
+	url := getURLInput(reader)
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -29,4 +22,17 @@ func main() {
 	body, _ := ioutil.ReadAll(resp.Body)
 
 	ioutil.WriteFile("dat1", body, 0644)
+}
+
+func getURLInput(r *bufio.Reader) string {
+	fmt.Print("Please enter the url you would like to download from then hit enter: \n")
+
+	delimiter := '\n'
+	url, err := r.ReadString(byte(delimiter))
+	if err != nil {
+		panic(fmt.Errorf("the string that was entered is invalid"))
+	}
+	url = strings.TrimSuffix(url, string(delimiter))
+
+	return url
 }
