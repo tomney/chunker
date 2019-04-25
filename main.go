@@ -11,7 +11,10 @@ import (
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	url := getURLInput(reader)
+	url, err := getURLInput(reader)
+	if err != nil {
+		panic(err)
+	}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -19,20 +22,23 @@ func main() {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(fmt.Errorf("an error was encountered while reading the body"))
+	}
 
 	ioutil.WriteFile("dat1", body, 0644)
 }
 
-func getURLInput(r *bufio.Reader) string {
+func getURLInput(r *bufio.Reader) (string, error) {
 	fmt.Print("Please enter the url you would like to download from then hit enter: \n")
 
 	delimiter := '\n'
 	url, err := r.ReadString(byte(delimiter))
 	if err != nil {
-		panic(fmt.Errorf("the string that was entered is invalid"))
+		return "", fmt.Errorf("Unable to read the string")
 	}
 	url = strings.TrimSuffix(url, string(delimiter))
 
-	return url
+	return url, nil
 }
