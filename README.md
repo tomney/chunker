@@ -3,11 +3,13 @@ This application downloads a file in 4 chunks and writes the chunks downloaded t
 files in multiple pieces simultaneously (saturating the network), then reassembling the pieces.
 
 ## Running the program
-After downloading the `chunker` package you should be able to execute it by running 
+After downloading the `chunker` package you should be able to execute it by navigating to the `chunker` directory and running 
 ```
 $ ./chunker
 ```
-You can then enter in the URL address you intend to download a file from. After doing this you will be prompted to enter the filename (though you can leave this blank and recieve a randomly generated filename).
+Or by double clicking on the `chunker` file.
+
+You will be prompted to enter in the URL address you intend to download a file from. After doing this you will be prompted to enter the filename (though you can leave this blank and recieve a randomly generated filename).
 
 ## Running tests
 To run the tests, navigate to the `chunker` directory and run 
