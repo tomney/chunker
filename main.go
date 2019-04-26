@@ -61,7 +61,7 @@ func getFilenameInput(r *bufio.Reader) (string, error) {
 	filename = strings.Trim(filename, " ")
 
 	if filename == "" {
-		filename = randstr.Hex(10)
+		filename = randstr.Base62(10)
 	}
 
 	return filename, nil

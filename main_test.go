@@ -36,6 +36,43 @@ func (s *getURLInputTestSuite) Test_ReturnsErrIfInputDoesNotContainDelimiter() {
 	s.Equal(fmt.Errorf("Unable to read the string"), err)
 }
 
-func TestGetURLInputTestSuite(t *testing.T) {
+func TestGetUrlInputTestSuite(t *testing.T) {
 	suite.Run(t, new(getURLInputTestSuite))
+}
+
+type getFilenameInputTestSuite struct {
+	suite.Suite
+	reader *bufio.Reader
+}
+
+func (s *getFilenameInputTestSuite) SetupTest() {
+	s.reader = bufio.NewReader(strings.NewReader("somefilename\n"))
+}
+
+func (s *getFilenameInputTestSuite) Test_RemovesDelimiter() {
+	filename, _ := getFilenameInput(s.reader)
+	s.Equal("somefilename", filename)
+}
+
+func (s *getFilenameInputTestSuite) Test_RemovesPrecedingAndTrailingWhitespace() {
+	s.reader = bufio.NewReader(strings.NewReader("  somefilename    \n"))
+	filename, _ := getFilenameInput(s.reader)
+	s.Equal("somefilename", filename)
+}
+
+func (s *getFilenameInputTestSuite) Test_ReturnsErrIfInputDoesNotContainDelimiter() {
+	s.reader = bufio.NewReader(strings.NewReader("somefilename"))
+	filename, err := getFilenameInput(s.reader)
+	s.Equal("", filename)
+	s.Equal(fmt.Errorf("Unable to read the string"), err)
+}
+
+func (s *getFilenameInputTestSuite) Test_ReturnsTenCharacterRandomStringIfNoStringIsProvided() {
+	s.reader = bufio.NewReader(strings.NewReader("\n"))
+	filename, _ := getFilenameInput(s.reader)
+	s.Equal(10, len(filename))
+}
+
+func TestGetFilenameInputTests(t *testing.T) {
+	suite.Run(t, new(getFilenameInputTestSuite))
 }
