@@ -16,12 +16,17 @@ type getURLInputTestSuite struct {
 
 func (s *getURLInputTestSuite) SetupTest() {
 	s.reader = bufio.NewReader(strings.NewReader("someurl\n"))
-
 }
 
 func (s *getURLInputTestSuite) Test_RemovesDelimiter() {
 	url, _ := getURLInput(s.reader)
-	s.Equal(url, "someurl")
+	s.Equal("someurl", url)
+}
+
+func (s *getURLInputTestSuite) Test_RemovesPrecedingAndTrailingWhitespace() {
+	s.reader = bufio.NewReader(strings.NewReader("  someurl    \n"))
+	url, _ := getURLInput(s.reader)
+	s.Equal("someurl", url)
 }
 
 func (s *getURLInputTestSuite) Test_ReturnsErrIfInputDoesNotContainDelimiter() {

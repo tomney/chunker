@@ -8,6 +8,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/thanhpk/randstr"
 )
 
 func main() {
@@ -17,12 +19,17 @@ func main() {
 		panic(err)
 	}
 
+	filename, err := getFilenameInput(reader)
+	if err != nil {
+		panic(err)
+	}
+
 	body, err := getURLResponseBody(url)
 	if err != nil {
 		panic(err)
 	}
 
-	err = ioutil.WriteFile("dat1", body, 0644)
+	err = ioutil.WriteFile(filename, body, 0644)
 	if err != nil {
 		panic(err)
 	}
@@ -37,7 +44,27 @@ func getURLInput(r *bufio.Reader) (string, error) {
 	}
 	url = strings.TrimSuffix(url, string(delimiter))
 
+	url = strings.Trim(url, " ")
+
 	return url, nil
+}
+
+func getFilenameInput(r *bufio.Reader) (string, error) {
+	fmt.Print("Please enter a name for your file (if you skip this we will randomly generate one): \n")
+	delimiter := '\n'
+	filename, err := r.ReadString(byte(delimiter))
+	if err != nil {
+		return "", fmt.Errorf("Unable to read the string")
+	}
+	filename = strings.TrimSuffix(filename, string(delimiter))
+
+	filename = strings.Trim(filename, " ")
+
+	if filename == "" {
+		filename = randstr.Hex(10)
+	}
+
+	return filename, nil
 }
 
 func getURLResponseBody(url string) ([]byte, error) {
@@ -52,22 +79,22 @@ func getURLResponseBody(url string) ([]byte, error) {
 	// errChan := make(chan error)
 	go func() {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=0-999999")
+		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=0-1048575")
 		c1 <- responseBody
 	}()
 	go func() {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=1000000-1999999")
+		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=1048576-2097151")
 		c2 <- responseBody
 	}()
 	go func() {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=2000000-2999999")
+		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=2097152-3145727")
 		c3 <- responseBody
 	}()
 	go func() {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=3000000-3999999")
+		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=3145728-4194303")
 		c4 <- responseBody
 	}()
 	wg.Wait()
