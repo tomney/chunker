@@ -84,7 +84,7 @@ func (s *getURLResponseBodyTestSuite) SetupTest() {
 	s.server = httptest.NewServer(
 		http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, "1")
+				fmt.Fprint(w, "test-")
 			},
 		),
 	)
@@ -92,8 +92,8 @@ func (s *getURLResponseBodyTestSuite) SetupTest() {
 }
 
 func (s *getURLResponseBodyTestSuite) Test_ReturnsFourConcatenatedURLResponses() {
-	body, _ := getURLResponseBody(s.client, s.server.URL, 4, 1048576)
-	s.Equal("1111", string(body))
+	body, _ := getURLResponseBody(s.client, s.server.URL, 4, 1)
+	s.Equal("test-test-test-test-", string(body))
 }
 
 func (s *getURLResponseBodyTestSuite) TearDownTest() {
