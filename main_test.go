@@ -92,7 +92,7 @@ func (s *getURLResponseBodyTestSuite) SetupTest() {
 }
 
 func (s *getURLResponseBodyTestSuite) Test_ReturnsFourConcatenatedURLResponses() {
-	body, _ := getURLResponseBody(s.client, s.server.URL)
+	body, _ := getURLResponseBody(s.client, s.server.URL, 4, 1048576)
 	s.Equal("1111", string(body))
 }
 

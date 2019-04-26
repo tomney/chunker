@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -25,7 +26,7 @@ func main() {
 	}
 
 	client := &http.Client{}
-	body, err := getURLResponseBody(client, url)
+	body, err := getURLResponseBody(client, url, 4, 1048576)
 	if err != nil {
 		panic(err)
 	}
@@ -52,13 +53,15 @@ func promptURLInput(r *bufio.Reader) (string, error) {
 
 func promptFilenameInput(r *bufio.Reader) (string, error) {
 	fmt.Print("Please enter a name for your file (if you skip this we will randomly generate one): \n")
+
 	delimiter := '\n'
+
 	filename, err := r.ReadString(byte(delimiter))
 	if err != nil {
 		return "", fmt.Errorf("Unable to read the string")
 	}
-	filename = strings.TrimSuffix(filename, string(delimiter))
 
+	filename = strings.TrimSuffix(filename, string(delimiter))
 	filename = strings.Trim(filename, " ")
 
 	if filename == "" {
@@ -68,69 +71,50 @@ func promptFilenameInput(r *bufio.Reader) (string, error) {
 	return filename, nil
 }
 
-func getURLResponseBody(client *http.Client, url string) ([]byte, error) {
+func getURLResponseBody(client *http.Client, url string, chunks int, chunkSize int) ([]byte, error) {
 	var wg sync.WaitGroup
-	wg.Add(4)
-	c1 := make(chan []byte, 1)
-	c2 := make(chan []byte, 1)
-	c3 := make(chan []byte, 1)
-	c4 := make(chan []byte, 1)
-	errChan := make(chan error, 4)
-	go func(errChan chan<- error) {
-		defer wg.Done()
-		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=0-1048575")
-		c1 <- responseBody
-		errChan <- err
-	}(errChan)
-	go func(errChan chan<- error) {
-		defer wg.Done()
-		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=1048576-2097151")
-		c2 <- responseBody
-		errChan <- err
-	}(errChan)
-	go func(errChan chan<- error) {
-		defer wg.Done()
-		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=2097152-3145727")
-		c3 <- responseBody
-		errChan <- err
-	}(errChan)
-	go func(errChan chan<- error) {
-		defer wg.Done()
-		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=3145728-4194303")
-		c4 <- responseBody
-		errChan <- err
-	}(errChan)
-	wg.Wait()
-	close(c1)
-	close(c2)
-	close(c3)
-	close(c4)
-	close(errChan)
+	channels := make([]chan []byte, 0, chunks)
+	errChannel := make(chan error, chunks)
 
-	for err := range errChan {
+	for i := 0; i < chunks; i++ {
+		byteRange := getByteRange(i, chunkSize)
+
+		wg.Add(1)
+		channel := make(chan []byte, 1)
+		channels = append(channels, channel)
+		go func(errChannel chan<- error) {
+			defer wg.Done()
+			responseBody, err := getURLResponseBodyAsync(client, url, byteRange)
+			channel <- responseBody
+			errChannel <- err
+		}(errChannel)
+	}
+
+	wg.Wait()
+	close(errChannel)
+	for _, channel := range channels {
+		close(channel)
+	}
+
+	for err := range errChannel {
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	body := make([]byte, 0, 4194303)
-	for byteList := range c1 {
-		body = append(body, byteList...)
-	}
+	body := make([]byte, 0, chunks*chunkSize)
 
-	for byteList := range c2 {
-		body = append(body, byteList...)
-	}
-
-	for byteList := range c3 {
-		body = append(body, byteList...)
-	}
-
-	for byteList := range c4 {
-		body = append(body, byteList...)
+	for _, channel := range channels {
+		for byteList := range channel {
+			body = append(body, byteList...)
+		}
 	}
 
 	return body, nil
+}
+
+func getByteRange(i int, chunkSize int) string {
+	return "bytes=" + strconv.Itoa(chunkSize*i) + "-" + strconv.Itoa(chunkSize*(i+1)-1)
 }
 
 func getURLResponseBodyAsync(client *http.Client, url string, byteRange string) ([]byte, error) {
@@ -138,7 +122,9 @@ func getURLResponseBodyAsync(client *http.Client, url string, byteRange string) 
 	if err != nil {
 		return nil, fmt.Errorf("an error was encountered creating the request: %v", err)
 	}
+
 	req.Header.Add("Range", byteRange)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("an error was encountered getting the url: %v", err)
@@ -149,5 +135,6 @@ func getURLResponseBodyAsync(client *http.Client, url string, byteRange string) 
 	if err != nil {
 		return nil, fmt.Errorf("an error was encountered while reading the body: %v", err)
 	}
+
 	return body, nil
 }
