@@ -103,7 +103,7 @@ func getURLResponseBody(url string) ([]byte, error) {
 	close(c3)
 	close(c4)
 
-	body := make([]byte, 400000, 4000000)
+	body := make([]byte, 4194303, 4194303)
 	for byteList := range c1 {
 		body = append(body, byteList...)
 	}
