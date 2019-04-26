@@ -18,16 +18,19 @@ func main() {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		panic(fmt.Errorf("an error was encountered getting the url"))
+		panic(fmt.Errorf("an error was encountered getting the url: %v", err))
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(fmt.Errorf("an error was encountered while reading the body"))
+		panic(fmt.Errorf("an error was encountered while reading the : %v", err))
 	}
 
-	ioutil.WriteFile("dat1", body, 0644)
+	err = ioutil.WriteFile("dat1", body, 0644)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func getURLInput(r *bufio.Reader) (string, error) {
