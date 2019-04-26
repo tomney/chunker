@@ -6,73 +6,100 @@ import (
 	"strings"
 	"testing"
 
+	"net/http"
+	"net/http/httptest"
+
 	"github.com/stretchr/testify/suite"
 )
 
-type getURLInputTestSuite struct {
+type promptURLInputTestSuite struct {
 	suite.Suite
 	reader *bufio.Reader
 }
 
-func (s *getURLInputTestSuite) SetupTest() {
+func (s *promptURLInputTestSuite) Test_RemovesDelimiter() {
 	s.reader = bufio.NewReader(strings.NewReader("someurl\n"))
-}
-
-func (s *getURLInputTestSuite) Test_RemovesDelimiter() {
-	url, _ := getURLInput(s.reader)
+	url, _ := promptURLInput(s.reader)
 	s.Equal("someurl", url)
 }
 
-func (s *getURLInputTestSuite) Test_RemovesPrecedingAndTrailingWhitespace() {
+func (s *promptURLInputTestSuite) Test_RemovesPrecedingAndTrailingWhitespace() {
 	s.reader = bufio.NewReader(strings.NewReader("  someurl    \n"))
-	url, _ := getURLInput(s.reader)
+	url, _ := promptURLInput(s.reader)
 	s.Equal("someurl", url)
 }
 
-func (s *getURLInputTestSuite) Test_ReturnsErrIfInputDoesNotContainDelimiter() {
+func (s *promptURLInputTestSuite) Test_ReturnsErrIfInputDoesNotContainDelimiter() {
 	s.reader = bufio.NewReader(strings.NewReader("someurl"))
-	url, err := getURLInput(s.reader)
+	url, err := promptURLInput(s.reader)
 	s.Equal("", url)
 	s.Equal(fmt.Errorf("Unable to read the string"), err)
 }
 
-func TestGetUrlInputTestSuite(t *testing.T) {
-	suite.Run(t, new(getURLInputTestSuite))
+func TestPromptURLInputTests(t *testing.T) {
+	suite.Run(t, new(promptURLInputTestSuite))
 }
 
-type getFilenameInputTestSuite struct {
+type promptFilenameInputTestSuite struct {
 	suite.Suite
 	reader *bufio.Reader
 }
 
-func (s *getFilenameInputTestSuite) SetupTest() {
+func (s *promptFilenameInputTestSuite) Test_RemovesDelimiter() {
 	s.reader = bufio.NewReader(strings.NewReader("somefilename\n"))
-}
-
-func (s *getFilenameInputTestSuite) Test_RemovesDelimiter() {
-	filename, _ := getFilenameInput(s.reader)
+	filename, _ := promptFilenameInput(s.reader)
 	s.Equal("somefilename", filename)
 }
 
-func (s *getFilenameInputTestSuite) Test_RemovesPrecedingAndTrailingWhitespace() {
+func (s *promptFilenameInputTestSuite) Test_RemovesPrecedingAndTrailingWhitespace() {
 	s.reader = bufio.NewReader(strings.NewReader("  somefilename    \n"))
-	filename, _ := getFilenameInput(s.reader)
+	filename, _ := promptFilenameInput(s.reader)
 	s.Equal("somefilename", filename)
 }
 
-func (s *getFilenameInputTestSuite) Test_ReturnsErrIfInputDoesNotContainDelimiter() {
+func (s *promptFilenameInputTestSuite) Test_ReturnsErrIfInputDoesNotContainDelimiter() {
 	s.reader = bufio.NewReader(strings.NewReader("somefilename"))
-	filename, err := getFilenameInput(s.reader)
+	filename, err := promptFilenameInput(s.reader)
 	s.Equal("", filename)
 	s.Equal(fmt.Errorf("Unable to read the string"), err)
 }
 
-func (s *getFilenameInputTestSuite) Test_ReturnsTenCharacterRandomStringIfNoStringIsProvided() {
+func (s *promptFilenameInputTestSuite) Test_ReturnsTenCharacterRandomStringIfNoStringIsProvided() {
 	s.reader = bufio.NewReader(strings.NewReader("\n"))
-	filename, _ := getFilenameInput(s.reader)
+	filename, _ := promptFilenameInput(s.reader)
 	s.Equal(10, len(filename))
 }
 
-func TestGetFilenameInputTests(t *testing.T) {
-	suite.Run(t, new(getFilenameInputTestSuite))
+func TestPromptFilenameInputTests(t *testing.T) {
+	suite.Run(t, new(promptFilenameInputTestSuite))
+}
+
+type getURLResponseBodyTestSuite struct {
+	suite.Suite
+	server *httptest.Server
+	client *http.Client
+}
+
+func (s *getURLResponseBodyTestSuite) SetupTest() {
+	s.server = httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "1")
+			},
+		),
+	)
+	s.client = s.server.Client()
+}
+
+func (s *getURLResponseBodyTestSuite) Test_ReturnsFourConcatenatedURLResponses() {
+	body, _ := getURLResponseBody(s.client, s.server.URL)
+	s.Equal("1111", string(body))
+}
+
+func (s *getURLResponseBodyTestSuite) TearDownTest() {
+	s.server.Close()
+}
+
+func TestGetURLResponseBodyTests(t *testing.T) {
+	suite.Run(t, new(getURLResponseBodyTestSuite))
 }

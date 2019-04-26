@@ -14,17 +14,18 @@ import (
 
 func main() {
 	reader := bufio.NewReader(os.Stdin)
-	url, err := getURLInput(reader)
+	url, err := promptURLInput(reader)
 	if err != nil {
 		panic(err)
 	}
 
-	filename, err := getFilenameInput(reader)
+	filename, err := promptFilenameInput(reader)
 	if err != nil {
 		panic(err)
 	}
 
-	body, err := getURLResponseBody(url)
+	client := &http.Client{}
+	body, err := getURLResponseBody(client, url)
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +36,7 @@ func main() {
 	}
 }
 
-func getURLInput(r *bufio.Reader) (string, error) {
+func promptURLInput(r *bufio.Reader) (string, error) {
 	fmt.Print("Please enter the url you would like to download from then hit enter: \n")
 	delimiter := '\n'
 	url, err := r.ReadString(byte(delimiter))
@@ -49,7 +50,7 @@ func getURLInput(r *bufio.Reader) (string, error) {
 	return url, nil
 }
 
-func getFilenameInput(r *bufio.Reader) (string, error) {
+func promptFilenameInput(r *bufio.Reader) (string, error) {
 	fmt.Print("Please enter a name for your file (if you skip this we will randomly generate one): \n")
 	delimiter := '\n'
 	filename, err := r.ReadString(byte(delimiter))
@@ -67,43 +68,52 @@ func getFilenameInput(r *bufio.Reader) (string, error) {
 	return filename, nil
 }
 
-func getURLResponseBody(url string) ([]byte, error) {
-	client := &http.Client{}
+func getURLResponseBody(client *http.Client, url string) ([]byte, error) {
 	var wg sync.WaitGroup
 	wg.Add(4)
 	c1 := make(chan []byte, 1)
 	c2 := make(chan []byte, 1)
 	c3 := make(chan []byte, 1)
 	c4 := make(chan []byte, 1)
-	// TODO: Come up with a system for getting errors as well
-	// errChan := make(chan error)
-	go func() {
+	errChan := make(chan error, 4)
+	go func(errChan chan<- error) {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=0-1048575")
+		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=0-1048575")
 		c1 <- responseBody
-	}()
-	go func() {
+		errChan <- err
+	}(errChan)
+	go func(errChan chan<- error) {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=1048576-2097151")
+		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=1048576-2097151")
 		c2 <- responseBody
-	}()
-	go func() {
+		errChan <- err
+	}(errChan)
+	go func(errChan chan<- error) {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=2097152-3145727")
+		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=2097152-3145727")
 		c3 <- responseBody
-	}()
-	go func() {
+		errChan <- err
+	}(errChan)
+	go func(errChan chan<- error) {
 		defer wg.Done()
-		responseBody, _ := getURLResponseBodyAsync(client, url, "bytes=3145728-4194303")
+		responseBody, err := getURLResponseBodyAsync(client, url, "bytes=3145728-4194303")
 		c4 <- responseBody
-	}()
+		errChan <- err
+	}(errChan)
 	wg.Wait()
 	close(c1)
 	close(c2)
 	close(c3)
 	close(c4)
+	close(errChan)
 
-	body := make([]byte, 4194303, 4194303)
+	for err := range errChan {
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	body := make([]byte, 0, 4194303)
 	for byteList := range c1 {
 		body = append(body, byteList...)
 	}
